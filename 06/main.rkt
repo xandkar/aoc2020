@@ -15,7 +15,13 @@
 
 (define (main)
   (define data (read "input.txt"))
-  (printf "part 1: ~a\n" (sum (map (λ (group) (length (uniq (flatten group))))
-                                   data))))
+  (printf "part 1: ~a\n"
+          (sum (map (λ (group)
+                       (length (uniq (flatten group))))
+                    data)))
+  (printf "part 2: ~a\n"
+          (sum (map (λ (group)
+                       (set-count (apply set-intersect (map list->set group))))
+                    data))))
 
 (main)
