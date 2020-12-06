@@ -1,12 +1,6 @@
 #! /usr/bin/env racket
 #lang racket
 
-; (: assert (-> Void))
-(define (assert label given valid)
-  (define invalid (filter-not (λ (code) (member code valid)) given))
-  (unless (equal? '() invalid)
-          (error "Invalid " label " codes: " invalid)))
-
 ; lower? -> (or/c list? #f)
 (define (lower? code)
   (member code '(F L)))
@@ -27,9 +21,12 @@
 
 ; (: codes->seat (-> (Listof Symbol) Integer))
 (define (codes->seat codes)
-  (define-values (row-codes col-codes) (split-at codes 7))
-  (assert "row" row-codes '(F B))
-  (assert "col" col-codes '(L R))
+  (define/contract row-codes
+    (listof (symbols 'F 'B))
+    (take codes 7))
+  (define/contract col-codes
+    (listof (symbols 'L 'R))
+    (drop codes 7))
   (define row (search 0 128 row-codes))
   (define col (search 0   8 col-codes))
   (define seat (+ (* 8 row) col))
