@@ -4,13 +4,13 @@
 (define/contract (codes->seat codes)
   (-> (listof (one-of/c #\F #\B #\L #\R))
       natural-number/c)
-  (define (letter->num sym)
+  (define (code->bin sym)
     (match sym
            [#\F #\0]
            [#\B #\1]
            [#\L #\0]
            [#\R #\1]))
-  (string->number (apply string (map letter->num codes)) 2))
+  (string->number (apply string (map code->bin codes)) 2))
 
 (define/contract (read filepath)
   (-> path-string?
