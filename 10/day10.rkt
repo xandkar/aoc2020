@@ -5,12 +5,13 @@
   (map string->number (file->lines filepath)))
 
 (define (ordered-pairs xs cmp)
-  (define (pairs xs n)
-    (cond [(null? xs) '()]
-          [(= n 0) '()]
-          [else (cons (cons (first xs) (second xs))
-                      (pairs (cdr xs) (sub1 n)))]))
-  (pairs (sort xs cmp) (sub1 (length xs))))
+  (define (pairs xs)
+    (match xs
+           ['() '()]
+           [(cons _ '()) '()]
+           [(cons x xs) (cons (cons x (car xs))
+                              (pairs xs))]))
+  (pairs (sort xs cmp)))
 
 (define (intervals xs)
   (map (λ (pair) (- (cdr pair) (car pair))) (ordered-pairs xs <)))
