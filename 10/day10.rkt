@@ -19,11 +19,6 @@
 (define (hist xs)
   (foldl (λ (x h) (hash-update h x add1 0)) (hash) xs))
 
-(define (iter f xs)
-  (unless (null? xs)
-          (void (f (car xs)))
-          (iter f (cdr xs))))
-
 (define (count-paths dag root)
   (define count-child
     (let ([known (make-hash)])
