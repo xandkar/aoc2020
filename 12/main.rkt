@@ -3,7 +3,12 @@
 
 (struct state (f x y) #:transparent)
 
-(define code/c (or/c 'N 'S 'E 'W 'L 'R 'F))
+(define abs-face-dir/c (or/c 'N 'S 'E 'W))
+(define rel-face-dir/c (or/c 'L 'R))
+(define move-dir/c 'F)
+(define code/c (or/c abs-face-dir/c
+                     rel-face-dir/c
+                     move-dir/c))
 (define instruction/c (cons/c code/c number?))
 
 (define/contract (string->ins s)
@@ -19,7 +24,8 @@
 (define (dir->num d) (match d ['N 0] ['E 1] ['S 2] ['W 3]))
 (define (num->dir n) (match n [0 'N] [1 'E] [2 'S] [3 'W]))
 
-(define (turn from in by)
+(define/contract (turn from in by)
+  (-> abs-face-dir/c rel-face-dir/c (or/c 90 180 270) abs-face-dir/c)
   (define op (match in ['R +] ['L -]))
   (num->dir (modulo (op (dir->num from) (/ by 90)) 4)))
 
@@ -44,11 +50,10 @@
   (for-each
     (λ (input-filepath)
        (define data (read input-filepath))
-       (define state0 (state 'E 0 0))
-       (define state1 (foldl move state0 data))
-       (printf "~a part-1 ~a\n" input-filepath (manhattan state1)))
+       (printf "~a part-1 ~a\n"
+               input-filepath
+               (manhattan (foldl move (state 'E 0 0) data))))
     (list "example.txt"
-          "input.txt"
-          )))
+          "input.txt")))
 
 (main)
