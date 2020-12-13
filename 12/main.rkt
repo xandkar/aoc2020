@@ -51,16 +51,44 @@
                              ['E (set-x s (+ (get-x s) n))]
                              ['W (set-x s (- (get-x s) n))])]))
 
-(define (manhattan s)
-  (+ (abs (get-x s)) (abs (get-y s))))
+(define (turn2 x y by)
+  (match
+    by
+    [(or 90  -270) (cons (- y)    x)]
+    [(or 180 -180) (cons (- x) (- y))]
+    [(or 270 -90 ) (cons    y  (- x))]))
+
+(define (move2 instruction states)
+  (match
+    states
+    [(cons (cons sx sy) (cons wx wy))
+     (match
+       instruction
+       [(cons 'N n) (cons (cons    sx              sy          ) (cons    wx    (+ wy n)   ))]
+       [(cons 'S n) (cons (cons    sx              sy          ) (cons    wx    (- wy n)   ))]
+       [(cons 'E n) (cons (cons    sx              sy          ) (cons (+ wx n)    wy      ))]
+       [(cons 'W n) (cons (cons    sx              sy          ) (cons (- wx n)    wy      ))]
+       [(cons 'L n) (cons (cons    sx              sy          ) (turn2   wx       wy    n ))]
+       [(cons 'R n) (cons (cons    sx              sy          ) (turn2   wx       wy (- n)))]
+       [(cons 'F n) (cons (cons (+ sx (* wx n)) (+ sy (* wy n))) (cons    wx       wy      ))])]))
+
+(define (manhattan x y)
+  (+ (abs x) (abs y)))
 
 (define (main)
   (for-each
     (λ (input-filepath)
        (define data (read input-filepath))
+       (define s1 (foldl move1 '(E 0 0) data))
+       (pretty-write (list 's1 s1))
        (printf "~a part-1 ~a\n"
                input-filepath
-               (manhattan (foldl move1 '(E 0 0) data))))
+               (manhattan (get-x s1) (get-y s1)))
+       (define s2 (car (foldl move2 (cons (cons 0 0) (cons 10 1)) data)))
+       (pretty-write (list 's2 s2))
+       (printf "~a part-1 ~a\n"
+               input-filepath
+               (manhattan (car s2) (cdr s2))))
     (list "example.txt"
           "input.txt")))
 
