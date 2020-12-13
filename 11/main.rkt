@@ -32,10 +32,20 @@
   (and (and (>= (pt-r p) 0) (< (pt-r p) nr))
        (and (>= (pt-k p) 0) (< (pt-k p) nk))))
 
+(define (offset dir depth)
+  (define d depth)
+  (match dir
+         ['nw (pt (- d) (- d))] ['n (pt (- d) 0)] ['ne (pt (- d) d)]
+         ['w  (pt    0  (- d))]                   ['e  (pt    0  d)]
+         ['sw (pt    d  (- d))] ['s (pt     d 0)] ['se (pt    d  d)]))
+
+(define moore-dirs
+  '(nw n ne
+    w    e
+    sw s se))
+
 (define moore-offsets
-  (list (pt -1 -1) (pt -1 0) (pt -1 1)
-        (pt  0 -1)           (pt  0 1)
-        (pt  1 -1) (pt  1 0) (pt  1 1)))
+  (map (λ (d) (offset d 1)) moore-dirs))
 
 (define (pt+ p1 p2)
   (pt (+ (pt-r p1)
@@ -43,31 +53,44 @@
       (+ (pt-k p1)
          (pt-k p2))))
 
-(define (hood p)
-  (map (λ (o) (pt+ p o)) moore-offsets))
-
-(define (neighbors board point)
-  (define d (dims board))
-  (define points (filter (λ (p) (inbounds? p (dim-nr d) (dim-nk d))) (hood point)))
-  (map (λ (p) (board-ref board p)) points))
-
-(define (count-neighbors-occupied b p)
-  (apply + (map (λ (s) (match s ['occupied 1] [_ 0])) (neighbors b p))))
-
-(define/contract (count-board-occupied b)
-  (-> board/c number?)
-  (define n-occupied 0)
+(define (look-for-occupied b p1 [max-depth #f])
   (define d (dims b))
-  (for* ([r (dim-nr d)]
-         [k (dim-nk d)]
-         #:when (eq? 'occupied (board-ref b (pt r k))))
-        (set! n-occupied (add1 n-occupied)))
-  n-occupied)
+  (define nr (dim-nr d))
+  (define nk (dim-nk d))
+  (define (look depth dirs count)
+    (let* ([dirs-count
+             (foldl (λ (dir dirs-count)
+                       (define dirs (car dirs-count))
+                       (define count (cdr dirs-count))
+                       (define p2 (pt+ p1 (offset dir depth)))
+                       (if (inbounds? p2 nr nk)
+                           (match (board-ref b p2)
+                                  ['floor    (cons (cons dir dirs)       count)]
+                                  ['empty    (cons           dirs        count)]
+                                  ['occupied (cons           dirs  (add1 count))])
+                           dirs-count)
+                       )
+                    (cons '() count)
+                    dirs)]
+           [dirs (car dirs-count)]
+           [count (cdr dirs-count)])
+          (cond
+            [(null? dirs)
+             count]
+            [(and max-depth (>= depth max-depth))
+             count]
+            [else
+              (look (add1 depth) dirs count)])))
+  (look 1 moore-dirs 0))
+
+(define (board-occupied b)
+  (apply + (map (λ (s) (match s ['occupied 1] [_ 0]))
+                (flatten (vector->list (vector-map vector->list b))))))
 
 (define (board d)
   (build-vector (dim-nr d) (λ (_) (make-vector (dim-nk d) 'floor))))
 
-(define (next b0)
+(define (next b0 max-occupied [max-depth #f])
   (define d (dims b0))
   (define b1 (board d))
   (define changes 0)
@@ -75,26 +98,29 @@
          [k (dim-nk d)])
         (let* ([p  (pt r k)]
                [s0 (board-ref b0 p)]
-               [s1 (match (cons s0 (count-neighbors-occupied b0 p))
+               [s1 (match (cons s0 (look-for-occupied b0 p max-depth))
                           [(cons 'empty 0) 'occupied]
-                          [(cons 'occupied n) #:when (>= n 4) 'empty]
+                          [(cons 'occupied n) #:when (>= n max-occupied) 'empty]
                           [_ s0])])
               (when (not (eq? s0 s1)) (set! changes (add1 changes)))
               (board-set! b1 p s1)))
   (cons b1 changes))
 
-(define (find-stabilized board)
-  (match (next board)
-         [(cons board changes) #:when (> changes 0) (find-stabilized board)]
+(define (find-stabilized board mo md)
+  (match (next board mo md)
+         [(cons board changes) #:when (> changes 0) (find-stabilized board mo md)]
          [(cons board _) board]))
 
 (define (main)
   (for-each
     (λ (input-filepath)
        (define data (read input-filepath))
-       (define stabilized (find-stabilized data))
-       (define n-occupied (count-board-occupied stabilized))
-       (printf "~a part-1 ~a\n" input-filepath n-occupied))
+       (printf "~a part-1 ~a\n"
+               input-filepath
+               (board-occupied (find-stabilized data 4 1)))
+       (printf "~a part-2 ~a\n"
+               input-filepath
+               (board-occupied (find-stabilized data 5 #f))))
     (list "example.txt"
           "input.txt")))
 
